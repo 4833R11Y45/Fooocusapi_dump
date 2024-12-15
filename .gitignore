@@ -1,0 +1,5 @@
+/models/controlnet/control-lora-canny-rank128.safetensors
+/models/controlnet/fooocus_xl_cpds_128.safetensors
+/models/prompt_expansion/fooocus_expansion/pytorch_model.bin
+/models/controlnet/*.safetensors
+/models/prompt_expansion/fooocus_expansion/*.bin
