@@ -8,6 +8,10 @@ from apis.models.requests import CommonRequest, Performance
 import base64
 from PIL import Image
 import io
+import os
+import asyncio
+from datetime import datetime
+from modules.config import path_outputs
 
 app = FastAPI()
 
@@ -39,7 +43,7 @@ async def generate(request: GenerateRequest):
             preset="initial",
             prompt="",
             negative_prompt="",
-            output_format="png",  # Specify output format
+            output_format="png",
             controlnet_image=[
                 ImagePrompt(
                     cn_img=img.cn_img,
@@ -56,19 +60,46 @@ async def generate(request: GenerateRequest):
         if result and isinstance(result, dict) and 'result' in result:
             # Get the first image path from results
             image_path = result['result'][0]
-            
-            # Read the image and convert to base64
-            with Image.open(image_path) as img:
-                buffered = io.BytesIO()
-                img.save(buffered, format="PNG")
-                img_str = base64.b64encode(buffered.getvalue()).decode()
+            if isinstance(image_path, str):
+                # Add retry mechanism for file access
+                max_retries = 3
+                retry_delay = 1
                 
-            # Return only the base64 string in JSON response
-            return {"image_base64": f"data:image/png;base64,{img_str}"}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to generate image")
+                for attempt in range(max_retries):
+                    try:
+                        # Use the image_path directly since it already contains the full path
+                        if os.path.exists(image_path):
+                            with Image.open(image_path) as img:
+                                buffered = io.BytesIO()
+                                img.save(buffered, format="PNG")
+                                img_str = base64.b64encode(buffered.getvalue()).decode()
+                            return {"image_base64": f"data:image/png;base64,{img_str}"}
+                        else:
+                            if attempt < max_retries - 1:
+                                await asyncio.sleep(retry_delay)
+                            else:
+                                raise HTTPException(
+                                    status_code=404,
+                                    detail=f"Generated image not found at {image_path}"
+                                )
+                    except Exception as e:
+                        if attempt == max_retries - 1:
+                            raise HTTPException(
+                                status_code=500,
+                                detail=f"Error processing image: {str(e)}"
+                            )
+                        await asyncio.sleep(retry_delay)
+        
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate image or invalid result format"
+        )
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error in generate endpoint: {str(e)}"
+        )
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=7865)
