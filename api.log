@@ -1,0 +1,94 @@
+nohup: ignoring input
+/home/ubuntu/fooocusapi/ldm_patched/unipc/uni_pc.py:19: SyntaxWarning: invalid escape sequence '\h'
+  """Create a wrapper class for the forward SDE (VP type).
+Exception in thread Thread-1 (worker):
+Traceback (most recent call last):
+  File "/home/ubuntu/fooocusapi/modules/patch.py", line 465, in loader
+    result = original_loader(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/safetensors/torch.py", line 311, in load_file
+    with safe_open(filename, framework="pt", device=device) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: No such file or directory: "/home/ubuntu/fooocusapi/models/checkpoints/juggernautXL_v8Rundiffusion.safetensors"
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3.12/threading.py", line 1073, in _bootstrap_inner
+    self.run()
+  File "/usr/lib/python3.12/threading.py", line 1010, in run
+    self._target(*self._args, **self._kwargs)
+  File "/home/ubuntu/fooocusapi/modules/async_worker.py", line 191, in worker
+    import modules.default_pipeline as pipeline
+  File "/home/ubuntu/fooocusapi/modules/default_pipeline.py", line 270, in <module>
+    refresh_everything(
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/modules/default_pipeline.py", line 250, in refresh_everything
+    refresh_base_model(base_model_name, vae_name)
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/modules/default_pipeline.py", line 74, in refresh_base_model
+    model_base = core.load_model(filename, vae_filename)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/Fooocusapi/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/modules/core.py", line 147, in load_model
+    unet, clip, vae, vae_filename, clip_vision = load_checkpoint_guess_config(ckpt_filename, embedding_directory=path_embeddings,
+                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/ldm_patched/modules/sd.py", line 431, in load_checkpoint_guess_config
+    sd = ldm_patched.modules.utils.load_torch_file(ckpt_path)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/ldm_patched/modules/utils.py", line 13, in load_torch_file
+    sd = safetensors.torch.load_file(ckpt, device=device.type)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/fooocusapi/modules/patch.py", line 481, in loader
+    raise ValueError(exp)
+ValueError: No such file or directory: "/home/ubuntu/fooocusapi/models/checkpoints/juggernautXL_v8Rundiffusion.safetensors"
+
+INFO:     Started server process [3877]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8080 (Press CTRL+C to quit)
+Total VRAM 22593 MB, total RAM 30883 MB
+Set vram state to: NORMAL_VRAM
+Always offload VRAM
+Device: cuda:0 NVIDIA L4 : native
+VAE dtype: torch.bfloat16
+Using pytorch cross attention
+Refiner unloaded.
+INFO:     122.150.87.181:48816 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     135.148.213.255:59389 - "GET / HTTP/1.1" 404 Not Found
+INFO:     135.148.10.175:54625 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     54.38.100.157:48545 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     54.38.100.155:39935 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     65.49.1.11:31061 - "GET / HTTP/1.1" 404 Not Found
+INFO:     65.49.1.17:10293 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     65.49.1.21:42651 - "CONNECT www.shadowserver.org%3A443 HTTP/1.1" 404 Not Found
+INFO:     65.49.1.23:58719 - "GET /geoserver/web/ HTTP/1.1" 404 Not Found
+INFO:     104.28.251.139:26965 - "GET / HTTP/1.1" 404 Not Found
+INFO:     103.228.36.203:45850 - "CONNECT www.google.com%3A443 HTTP/1.1" 404 Not Found
+INFO:     51.159.101.214:35448 - "HEAD / HTTP/1.1" 404 Not Found
+INFO:     51.159.101.214:35460 - "GET / HTTP/1.1" 404 Not Found
+WARNING:  Invalid HTTP request received.
+INFO:     59.99.192.94:36183 - "GET /boaform/admin/formLogin?username=adminisp&psd=adminisp HTTP/1.0" 404 Not Found
+INFO:     78.108.177.50:37974 - "GET / HTTP/1.0" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [3877]

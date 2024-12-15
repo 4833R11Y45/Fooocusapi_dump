@@ -1,0 +1,20 @@
+{
+    "path_checkpoints": [
+        "/home/ubuntu/fooocusapi/models/checkpoints"
+    ],
+    "path_loras": [
+        "/home/ubuntu/fooocusapi/models/loras"
+    ],
+    "path_embeddings": "/home/ubuntu/fooocusapi/models/embeddings",
+    "path_vae_approx": "/home/ubuntu/fooocusapi/models/vae_approx",
+    "path_vae": "/home/ubuntu/fooocusapi/models/vae",
+    "path_upscale_models": "/home/ubuntu/fooocusapi/models/upscale_models",
+    "path_inpaint": "/home/ubuntu/fooocusapi/models/inpaint",
+    "path_controlnet": "/home/ubuntu/fooocusapi/models/controlnet",
+    "path_clip_vision": "/home/ubuntu/fooocusapi/models/clip_vision",
+    "path_fooocus_expansion": "/home/ubuntu/fooocusapi/models/prompt_expansion/fooocus_expansion",
+    "path_wildcards": "/home/ubuntu/fooocusapi/wildcards",
+    "path_safety_checker": "/home/ubuntu/fooocusapi/models/safety_checker",
+    "path_sam": "/home/ubuntu/fooocusapi/models/sam",
+    "path_outputs": "/home/ubuntu/fooocusapi/outputs"
+}
