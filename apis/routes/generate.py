@@ -6,6 +6,7 @@ from fastapi import (
 )
 from sse_starlette.sse import EventSourceResponse
 import base64
+import os
 
 from apis.models.base import (
     DescribeImageResponse,
@@ -35,9 +36,6 @@ secure_router = APIRouter(
 async def generate_routes(
         common_request: CommonRequest,
         accept: str = Header(None)):
-    """
-    Generate API routes with base64 output
-    """
     try:
         # Force image number to 1 for consistent output
         common_request.image_number = 1
@@ -46,19 +44,21 @@ async def generate_routes(
         result = await async_worker(request=common_request, wait_for_result=True)
         
         if result and isinstance(result, dict) and 'result' in result:
-            # Get the first image path from results and convert from URL to local path
+            # Get the first image path from results
             url_path = result['result'][0]
             
-            # Extract the relative path from the URL
-            # Example: "http://127.0.0.1:7866/outputs/2024-12-15/image.png" -> "2024-12-15/image.png"
-            relative_path = url_path.split('/outputs/')[-1]
+            # Extract just the filename from the path
+            filename = os.path.basename(url_path)
             
-            # Construct the actual file path
-            from pathlib import Path
-            output_dir = Path("/home/ubuntu/fooocusapi/outputs")  # Ensure this is the correct base output directory
-            image_path = output_dir / relative_path
+            # Get current date
+            from datetime import datetime
+            current_date = datetime.now().strftime("%Y-%m-%d")
             
-            if not image_path.exists():
+            # Construct the actual file path using path_outputs from config
+            from modules.config import path_outputs
+            image_path = os.path.join(path_outputs, current_date, filename)
+            
+            if not os.path.exists(image_path):
                 raise HTTPException(
                     status_code=404,
                     detail=f"Generated image not found at {image_path}"
