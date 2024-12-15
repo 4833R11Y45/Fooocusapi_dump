@@ -13,6 +13,7 @@ from PIL import Image
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi import Response
+import base64
 
 from apis.models.base import CurrentTask, GenerateMaskRequest
 from apis.models.response import RecordResponse
@@ -171,97 +172,165 @@ async def stream_output(request: CommonRequest):
                 CurrentTask.ct = None
 
 
-async def binary_output(
-        request: CommonRequest,
-        ext: str):
-    """
-    Calls the worker with the given params.
-    :param request: The request object containing the params.
-    :param ext: The extension of the output image.
-    """
-    request.image_number = 1
+async def verify_image_file(file_path, max_attempts=10, delay=0.5):
+    """Verify that image file exists and is not empty"""
+    for attempt in range(max_attempts):
+        if os.path.exists(file_path):
+            try:
+                file_size = os.path.getsize(file_path)
+                if file_size > 0:
+                    with open(file_path, 'rb') as f:
+                        header = f.read(8)
+                        if len(header) > 0:
+                            return True
+            except (OSError, IOError):
+                pass
+        await asyncio.sleep(delay)
+    return False
 
-    task, in_queue_mills, raw_req, task_id = await process_params(request)
-
-    save_name = raw_req.save_name
-    started = False
-    finished = False
-    while not finished:
-        await asyncio.sleep(0.2)
-        if len(task.yields) > 0:
-            if not started:
-                started = True
-                CurrentTask.task = task
-                started_at = int(datetime.datetime.now().timestamp() * 1000)
-                CurrentTask.ct = RecordResponse(
-                    task_id=task.task_id,
-                    req_params=json.loads(raw_req.model_dump_json()),
-                    in_queue_mills=in_queue_mills,
-                    start_mills=started_at,
-                    task_status="running",
-                    progress=0,
-                    result=[]
-                )
-            flag, product = task.yields.pop(0)
-            if flag == 'preview':
-                if len(task.yields) > 0:
-                    if task.yields[0][0] == 'preview':
-                        continue
-                percentage, _, image = product
-                CurrentTask.ct.progress = percentage
-                CurrentTask.ct.preview = narray_to_base64img(image)
-            if flag == 'finish':
-                finished = True
-                CurrentTask.task = None
-                CurrentTask.ct = None
-                await post_worker(task=task, started_at=started_at, target_name=save_name, ext=ext)
+async def post_worker(task: AsyncTask, started_at: int, target_name: str, ext: str):
+    final_enhanced = []
+    task_status = "finished"
+    
     try:
-        # Get the correct path from task results
-        from pathlib import Path
-        import base64
+        # Handle final enhanced images
+        if task.save_final_enhanced_image_only:
+            for item in task.results:
+                if temp_path not in str(item):
+                    # Remove any URL prefixes and clean path
+                    clean_path = str(item).replace('http://127.0.0.1:7866/', '')
+                    if clean_path.startswith('/'):
+                        clean_path = clean_path[1:]
+                    # Ensure path is not duplicated
+                    if clean_path.startswith(path_outputs):
+                        final_enhanced.append(clean_path)
+                    else:
+                        final_enhanced.append(os.path.join(path_outputs, clean_path))
+            task.results = final_enhanced
+
+        if task.last_stop in ['stop', 'skip']:
+            task_status = task.last_stop
+
+        # Clean paths and verify files
+        cleaned_results = []
+        for result in task.results:
+            # Clean path
+            clean_path = str(result).replace('http://127.0.0.1:7866/', '')
+            if clean_path.startswith('/'):
+                clean_path = clean_path[1:]
+            
+            # Ensure path is not duplicated
+            if clean_path.startswith(path_outputs):
+                full_path = clean_path
+            else:
+                full_path = os.path.join(path_outputs, clean_path)
+
+            if os.path.exists(full_path):
+                cleaned_results.append(full_path)
+            else:
+                print(f"Warning: File not found: {full_path}")
+
+        # Update task results with clean paths
+        task.results = cleaned_results
+
+        # Update database record
+        query = session.query(GenerateRecord).filter(GenerateRecord.task_id == task.task_id).first()
+        if query:
+            query.start_mills = started_at
+            query.finish_mills = int(datetime.datetime.now().timestamp() * 1000)
+            query.task_status = task_status
+            query.progress = 100
+            query.result = url_path(cleaned_results)
+            finally_result = str(query)
+            session.commit()
+            
+            if query.webhook_url:
+                await send_result_to_web_hook(query.webhook_url, finally_result)
+            return finally_result
+    except Exception as e:
+        print(f"Error in post_worker: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise
+    finally:
+        CurrentTask.ct = None
+
+async def binary_output(request: CommonRequest, ext: str):
+    try:
+        task, in_queue_mills, raw_req, task_id = await process_params(request)
+        save_name = raw_req.save_name
+        started = False
+        finished = False
         
-        # Get the actual file path from outputs directory
-        output_path = Path(path_outputs) / datetime.datetime.now().strftime("%Y-%m-%d")
-        image_files = list(output_path.glob(f"*.{ext}"))
-        
-        if not image_files:
+        while not finished:
+            await asyncio.sleep(0.2)
+            if len(task.yields) > 0:
+                if not started:
+                    started = True
+                    CurrentTask.task = task
+                    started_at = int(datetime.datetime.now().timestamp() * 1000)
+                    CurrentTask.ct = RecordResponse(
+                        task_id=task.task_id,
+                        req_params=json.loads(raw_req.model_dump_json()),
+                        in_queue_mills=in_queue_mills,
+                        start_mills=started_at,
+                        task_status="running",
+                        progress=0,
+                        result=[]
+                    )
+                flag, product = task.yields.pop(0)
+                if flag == 'finish':
+                    finished = True
+                    CurrentTask.task = None
+                    CurrentTask.ct = None
+                    await post_worker(task=task, started_at=started_at, target_name=save_name, ext=ext)
+
+        # Wait a bit for file to be written
+        await asyncio.sleep(1)
+
+        if task.results and len(task.results) > 0:
+            result_path = task.results[0]
+            
+            # Clean the path
+            clean_path = str(result_path)
+            # Remove URL prefix if present
+            clean_path = clean_path.replace('http://127.0.0.1:7866/', '')
+            # Remove leading slash if present
+            clean_path = clean_path.lstrip('/')
+            # Remove any duplicate base paths
+            clean_path = clean_path.replace(str(path_outputs), '').lstrip('/')
+            
+            # Construct final path correctly
+            full_path = os.path.normpath(os.path.join(path_outputs, clean_path))
+            
+            print(f"Looking for file at: {full_path}")
+            
+            if os.path.exists(full_path):
+                with open(full_path, "rb") as img_file:
+                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                return Response(
+                    content={"image": img_data},
+                    media_type="application/json"
+                )
+            else:
+                return Response(
+                    status_code=404,
+                    content={"detail": f"Image file not found at {full_path}"}
+                )
+
+        else:
             return Response(
                 status_code=404,
-                content={"detail": "No image file found"}
+                content={"detail": "No results found"}
             )
-            
-        # Get the most recent image file
-        image_path = max(image_files, key=lambda x: x.stat().st_mtime)
-        
-        # Add retry mechanism for file access
-        max_retries = 3
-        retry_delay = 1
-        
-        for attempt in range(max_retries):
-            try:
-                if image_path.exists():
-                    # Convert to base64
-                    with open(image_path, "rb") as img_file:
-                        img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                    
-                    return Response(
-                        content={"image": img_data},
-                        media_type="application/json"
-                    )
-                else:
-                    await asyncio.sleep(retry_delay)
-            except Exception as e:
-                if attempt == max_retries - 1:
-                    raise
-                await asyncio.sleep(retry_delay)
-                
+
     except Exception as e:
+        print(f"Error in binary_output: {str(e)}")
         return Response(
             status_code=500,
             content={"detail": f"Error processing image: {str(e)}"}
         )
-
-
+    
 async def async_worker(request: CommonRequest, wait_for_result: bool = False) -> dict:
     """
     Calls the worker with the given params.
